@@ -1,0 +1,34 @@
+# CUDA build artifacts
+*.o
+*.obj
+*.ptx
+*.cubin
+*.linkinfo
+*.d
+
+# Executables
+*.exe
+*.out
+*.a
+*.so
+*.dll
+*.dylib
+matmul*
+cpu_benchmark*
+
+# VSCode
+.vscode/
+
+# CLion
+cmake-build-*/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Benchmark and log files
+Benchmarks/*.csv
+Benchmarks/*.txt
+*.log 
+cpu
