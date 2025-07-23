@@ -6,20 +6,19 @@
 *.linkinfo
 *.d
 
-# Executables
-*.exe
-*.out
-*.a
-*.so
-*.dll
-*.dylib
-matmul*
-cpu_benchmark*
+# Ignore files with no extension in the project root (executables)
+/*
+!*/
+!*.*
 
-# VSCode
+# Shared libraries and other binaries
+.out
+.a
+.so
+.dylib
+
+# VSCode and CLion
 .vscode/
-
-# CLion
 cmake-build-*/
 .idea/
 
@@ -30,5 +29,4 @@ Thumbs.db
 # Benchmark and log files
 Benchmarks/*.csv
 Benchmarks/*.txt
-*.log 
-cpu
+*.log
