@@ -12,7 +12,7 @@
 !*.*
 
 # Shared libraries and other binaries
-.out
+*.out
 .a
 .so
 .dylib
@@ -30,3 +30,6 @@ Thumbs.db
 Benchmarks/*.csv
 Benchmarks/*.txt
 *.log
+
+# Under Development Kernels
+*cuda.cu
