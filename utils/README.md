@@ -4,6 +4,7 @@ This file contains the main function for benchmarking matrix multiplication on t
 
 ## What Happens in main.cu (Step-by-Step)
 1. **Host Memory Allocation:**
+
    - Allocates memory for matrices A, B, and C on the host (CPU).
    - If allocation fails, prints an error and exits.
 2. **Matrix Initialization:**
