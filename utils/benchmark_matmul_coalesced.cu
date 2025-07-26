@@ -38,7 +38,13 @@ int run_benchmark(int N) {
     }
     random_fill(h_A, N*N);
     random_fill(h_B, N*N);
+    
+
     checksum(h_A , h_B , h_C , N);
+    
+    // when accessing B matrix the memory around it is also copied..
+    //  this will increase cache hits because for multiplying a(0.0)
+    //  full row 0 of B will be faster loaded
     float *d_A, *d_B, *d_C;
     cudaError_t err;
     err = cudaMalloc(&d_A, bytes);
@@ -101,15 +107,16 @@ int run_benchmark(int N) {
     cudaEventElapsedTime(&h2d_ms, h2d_start, h2d_stop);
 
     // Warmup kernel run
-    matmul_naive<<<blocks, threads>>>(d_A, d_B, d_C, N);
+    matmul_coalesced<<<blocks, threads>>>(d_A, d_B, d_C, N);
     cudaDeviceSynchronize();
 
     // Kernel timing (average over 10 runs)
     float kernel_ms = 0;
     int runs = 10;
     for (int i = 0; i < runs; ++i) {
+        printf("Kernel Started");
         cudaEventRecord(start);
-        matmul_naive<<<blocks, threads>>>(d_A, d_B, d_C, N);
+        matmul_coalesced<<<blocks, threads>>>(d_A, d_B, d_C, N);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         float ms = 0;

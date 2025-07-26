@@ -1,8 +1,8 @@
-# CUDA Matrix Multiplication Benchmark
+# CUDA Matrix Multiplication Benchmark (main.cu)
 
-This file contains the  functions for benchmarking matrix multiplication on the GPU using CUDA.
+This file contains the main function for benchmarking matrix multiplication on the GPU using CUDA.
 
-## What Happens in (Step-by-Step)
+## What Happens in main.cu (Step-by-Step)
 1. **Host Memory Allocation:**
    - Allocates memory for matrices A, B, and C on the host (CPU).
    - If allocation fails, prints an error and exits.
@@ -28,7 +28,6 @@ This file contains the  functions for benchmarking matrix multiplication on the 
      - Device-to-host memory transfer time
      - Average kernel execution time
      - Kernel GFLOPS (Giga Floating Point Operations Per Second)
-     - Checksum for verifying results
 9. **Cleanup:**
    - Frees all allocated host and device memory.
    - Destroys CUDA events.
@@ -41,13 +40,12 @@ This file contains the  functions for benchmarking matrix multiplication on the 
   - Device-to-host memory transfer time
   - Average kernel execution time (over multiple runs)
   - Kernel GFLOPS (Giga Floating Point Operations Per Second)
-  - Checksum for verifying results
-- Includes robust error checking for memory allocation and CUDA  calls
+- Includes robust error checking for memory allocation and CUDA API calls
 
 ## Usage
 1. **Compile:**
    ```bash
-   nvcc utils/benchmark_{kernelname}.cu Kernel/{kernel_name} -o cuda_benchmark
+   nvcc utils/main.cu Kernel/matmul_naive.cu -o cuda_benchmark
    ```
 2. **Run:**
    ```bash
@@ -55,7 +53,7 @@ This file contains the  functions for benchmarking matrix multiplication on the 
    ```
 
 ## Output
-The program prints timing results and GFLOPS to the console for multiple matrix sizes.
+The program prints timing results and GFLOPS to the console. Adjust the matrix size by changing the `N` macro in `main.cu`.
 
 ---
 For CPU benchmarking, see `cpu_benchmarking.cpp` in this folder. 

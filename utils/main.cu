@@ -4,27 +4,13 @@
 #include <iomanip>
 #include <stdexcept>
 
+#define N 4096
+
 void random_fill(float* arr, int n) {
     for (int i = 0; i < n; ++i) arr[i] = static_cast<float>(rand()) / RAND_MAX;
 }
 
-
-void checksum(const float *A, float *B, float *C, int n) {
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            float sum = 0.0f;
-            for (int k = 0; k < n; ++k) {
-                sum += A[i * n + k] * B[k * n + j];
-            }
-            C[i * n + j] = sum;
-        }
-    }
-    double checksum = 0.0;
-    for (int i = 0; i < n*n; ++i) checksum += C[i];
-    std::cout << "Checksum CPU: " << checksum << std::endl;
-}
-
-int run_benchmark(int N) {
+int main() {
     size_t bytes = N * N * sizeof(float);
     float *h_A = (float*)malloc(bytes);
     float *h_B = (float*)malloc(bytes);
@@ -38,7 +24,7 @@ int run_benchmark(int N) {
     }
     random_fill(h_A, N*N);
     random_fill(h_B, N*N);
-    checksum(h_A , h_B , h_C , N);
+
     float *d_A, *d_B, *d_C;
     cudaError_t err;
     err = cudaMalloc(&d_A, bytes);
@@ -75,12 +61,9 @@ int run_benchmark(int N) {
         free(h_A); free(h_B); free(h_C);
         return 1;
     }
-    int x = 32;
-    int y = 32;
-    int z = 1;
-    dim3 threads(x, y, z);
-    printf("dimensions of threads: %d, %d, %d\n", x, y, z);
-    dim3 blocks(ceil(N/(float)(x)), ceil(N/(float)(y)) , 1);
+
+    dim3 threads(16, 16);
+    dim3 blocks((N+15)/16, (N+15)/16);
 
     // CUDA events for timing
     cudaEvent_t start, stop, h2d_start, h2d_stop, d2h_start, d2h_stop;
@@ -150,7 +133,7 @@ int run_benchmark(int N) {
     // Checksum calculation
     double checksum = 0.0;
     for (int i = 0; i < N*N; ++i) checksum += h_C[i];
-    std::cout << "Checksum: " << checksum << std::endl<<std::endl << std::endl<<std::endl;
+    std::cout << "Checksum: " << checksum << std::endl;
 
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
@@ -163,13 +146,3 @@ int run_benchmark(int N) {
     free(h_A); free(h_B); free(h_C);
     return 0;
 } 
-
-
-int main() {
-    int sizes[] = {512, 1024, 2048, 3072, 4096, 6144, 8192};
-    for (int N : sizes) {
-        std::cout  << "Running benchmark for N = " << N << std::endl ;
-        run_benchmark(N);
-    }
-    return 0;
-}
