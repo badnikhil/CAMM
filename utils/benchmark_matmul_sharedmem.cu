@@ -107,7 +107,7 @@ int run_benchmark(int N) {
     cudaEventElapsedTime(&h2d_ms, h2d_start, h2d_stop);
 
     // Warmup kernel run
-    matmul_coalesced<<<blocks, threads>>>(d_A, d_B, d_C, N);
+    matMulShared<<<blocks, threads>>>(d_A, d_B, d_C, N);
     cudaDeviceSynchronize();
 
     // Kernel timing (average over 10 runs)
@@ -115,7 +115,7 @@ int run_benchmark(int N) {
     int runs = 10;
     for (int i = 0; i < runs; ++i) {
         cudaEventRecord(start);
-        matmul_coalesced<<<blocks, threads>>>(d_A, d_B, d_C, N);
+        matMulShared<<<blocks, threads>>>(d_A, d_B, d_C, N);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         float ms = 0;
