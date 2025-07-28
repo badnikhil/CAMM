@@ -81,8 +81,8 @@ int run_benchmark(int N) {
         free(h_A); free(h_B); free(h_C);
         return 1;
     }
-    int x = 32;
-    int y = 32;
+    int x = 16;
+    int y = 16;
     int z = 1;
     dim3 threads(x, y, z);
     printf("dimensions of threads: %d, %d, %d\n", x, y, z);
@@ -114,7 +114,6 @@ int run_benchmark(int N) {
     float kernel_ms = 0;
     int runs = 10;
     for (int i = 0; i < runs; ++i) {
-        printf("Kernel Started");
         cudaEventRecord(start);
         matmul_coalesced<<<blocks, threads>>>(d_A, d_B, d_C, N);
         cudaEventRecord(stop);
