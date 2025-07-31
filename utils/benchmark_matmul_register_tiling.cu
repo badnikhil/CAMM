@@ -3,6 +3,8 @@
 #include "../Header/matmul_kernels.cuh"
 #include <iomanip>
 #include <stdexcept>
+#define TILE_SIZE 64
+#define COARSE_FACTOR 4
 
 void random_fill(float* arr, int n) {
     for (int i = 0; i < n; ++i) arr[i] = static_cast<float>(rand()) / RAND_MAX;
@@ -21,6 +23,7 @@ void checksum(const float *A, float *B, float *C, int n) {
     }
     double checksum = 0.0;
     for (int i = 0; i < n*n; ++i) checksum += C[i];
+    printf(" C[0] =  %f",C[0] );
     std::cout << "Checksum CPU: " << checksum << std::endl;
 }
 
@@ -39,9 +42,8 @@ int run_benchmark(int N) {
     random_fill(h_A, N*N);
     random_fill(h_B, N*N);
     
-
     checksum(h_A , h_B , h_C , N);
-    
+
     float *d_A, *d_B, *d_C;
     cudaError_t err;
     err = cudaMalloc(&d_A, bytes);
@@ -78,12 +80,8 @@ int run_benchmark(int N) {
         free(h_A); free(h_B); free(h_C);
         return 1;
     }
-    int x = 16;
-    int y = 16;
-    int z = 1;
-    dim3 threads(x, y, z);
-    printf("dimensions of threads: %d, %d, %d\n", x, y, z);
-    dim3 blocks(ceil(N/(float)(x)), ceil(N/(float)(y)) , 1);
+    dim3 threads(TILE_SIZE*TILE_SIZE/(COARSE_FACTOR*COARSE_FACTOR));
+    dim3 blocks(N/TILE_SIZE,N/TILE_SIZE);
 
     // CUDA events for timing
     cudaEvent_t start, stop, h2d_start, h2d_stop, d2h_start, d2h_stop;

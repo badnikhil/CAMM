@@ -1,62 +1,78 @@
 #include<cuda_runtime.h>
+
 #include "../../Header/matmul_kernels.cuh"
+
 #include<iomanip>
 
+#define TILE_SIZE 64
+
+#define COARSE_FACTOR 4
 
 __global__ void matmul_register_tiling(const float *A, const float *B, float *C, const int N) {
-    // Define the block and thread indices
-    int blockRow = blockIdx.y;
-    int blockCol = blockIdx.x;
-    int row = threadIdx.y;
-    int col = threadIdx.x;
 
-    // Define the number of registers to use for tiling
-    const int REG_TILE_SIZE = 4;
+    const int threads_per_block = TILE_SIZE * TILE_SIZE / (COARSE_FACTOR * COARSE_FACTOR);
+    const int block_y = blockIdx.y;
+    const int block_x = blockIdx.x;
 
-    // Define the shared memory size
-    const int SHARED_MEM_SIZE = 16;
+    const int thread_id = threadIdx.x;
 
-    // Declare the shared memory
-    __shared__ float sharedA[SHARED_MEM_SIZE][SHARED_MEM_SIZE];
-    __shared__ float sharedB[SHARED_MEM_SIZE][SHARED_MEM_SIZE];
+    // 1D -> 2D index mapping for shared load from A
+    const int shared_A_row = thread_id / TILE_SIZE;
+    const int shared_A_col = thread_id % TILE_SIZE;
+    const int shared_A_stride = threads_per_block / TILE_SIZE;
 
-    // Initialize the registers for the A and B matrices
-    float regA[REG_TILE_SIZE];
-    float regB[REG_TILE_SIZE];
+    // 1D -> 2D index mapping for shared load from B
+    const int shared_B_row = thread_id / TILE_SIZE;
+    const int shared_B_col = thread_id % TILE_SIZE;
+    const int shared_B_stride = threads_per_block / TILE_SIZE;
 
-    // Initialize the register for the C matrix
-    float regC = 0.0f;
+    const int C_row = COARSE_FACTOR * (thread_id / (TILE_SIZE / COARSE_FACTOR));
+    const int C_col = COARSE_FACTOR * (thread_id % (TILE_SIZE / COARSE_FACTOR));
 
-    // Calculate the global thread indices
-    int globalRow = blockRow * blockDim.y + row;
-    int globalCol = blockCol * blockDim.x + col;
+    __shared__ float tile_A[TILE_SIZE][TILE_SIZE];
+    __shared__ float tile_B[TILE_SIZE][TILE_SIZE];
 
-    // Check if the thread is within the matrix bounds
-    if (globalRow < N && globalCol < N) {
-        // Loop through the tiles
-        for (int tile = 0; tile < N / SHARED_MEM_SIZE; tile++) {
-            // Load the A and B matrices into shared memory
-            if (row < SHARED_MEM_SIZE && col < SHARED_MEM_SIZE) {
-                sharedA[row][col] = A[globalRow * N + tile * SHARED_MEM_SIZE + col];
-                sharedB[row][col] = B[(tile * SHARED_MEM_SIZE + row) * N + globalCol];
-            }
+    float accum[COARSE_FACTOR][COARSE_FACTOR] = {0.0f};
+    float reg_A[COARSE_FACTOR] = {0.0f};
+    float reg_B[COARSE_FACTOR] = {0.0f};
 
-            // Synchronize the threads
-            __syncthreads();
+    const int num_phases = ceil((float)N / TILE_SIZE);
 
-            // Load the A and B matrices into registers
-            for (int i = 0; i < REG_TILE_SIZE; i++) {
-                regA[i] = sharedA[row][i];
-                regB[i] = sharedB[i][col];
-            }
-
-            // Perform the matrix multiplication using the registers
-            for (int i = 0; i < REG_TILE_SIZE; i++) {
-                regC += regA[i] * regB[i];
-            }
+    for (int phase = 0; phase < num_phases; phase++) {
+        for (int offset = 0; offset < TILE_SIZE; offset += shared_A_stride) {
+            if ((block_y * TILE_SIZE + offset + shared_A_row < N) && ((phase * TILE_SIZE + shared_A_col) < N))
+                tile_A[offset + shared_A_row][shared_A_col] = A[(block_y * TILE_SIZE + offset + shared_A_row) * N + (phase * TILE_SIZE + shared_A_col)];
+            else
+                tile_A[offset + shared_A_row][shared_A_col] = 0.0f;
         }
 
-        // Store the result in the C matrix
-        C[globalRow * N + globalCol] = regC;
+        for (int offset = 0; offset < TILE_SIZE; offset += shared_B_stride) {
+            if (((phase * TILE_SIZE + shared_B_row + offset) < N) && (block_x * TILE_SIZE + shared_B_col < N))
+                tile_B[shared_B_row + offset][shared_B_col] = B[(phase * TILE_SIZE + shared_B_row + offset) * N + (block_x * TILE_SIZE + shared_B_col)];
+            else
+                tile_B[shared_B_row + offset][shared_B_col] = 0.0f;
+        }
+        __syncthreads();
+
+        for (int k = 0; k < TILE_SIZE; ++k) {
+            for (int i = 0; i < COARSE_FACTOR; ++i)
+                reg_A[i] = tile_A[C_row + i][k];
+
+            for (int i = 0; i < COARSE_FACTOR; ++i)
+                reg_B[i] = tile_B[k][C_col + i];
+
+            for (int y = 0; y < COARSE_FACTOR; ++y) {
+                for (int x = 0; x < COARSE_FACTOR; ++x)
+                    accum[y][x] += reg_A[y] * reg_B[x];
+            }
+        }
+        __syncthreads();
     }
+
+    for (int y = 0; y < COARSE_FACTOR; ++y) {
+        for (int x = 0; x < COARSE_FACTOR; x++) {
+            if ((block_y * TILE_SIZE + C_row + y < N) && (block_x * TILE_SIZE + C_col + x < N))
+                C[(block_y * TILE_SIZE + C_row + y) * N + (block_x * TILE_SIZE + C_col + x)] = accum[y][x];
+        }
+    } 
 }
