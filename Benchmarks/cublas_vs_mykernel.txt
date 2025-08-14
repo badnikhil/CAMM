@@ -76,48 +76,64 @@ Host to Device memcpy time: 0.6704 ms
 cuBLAS execution time (avg of 10): 0.174387 ms
 Device to Host memcpy time: 1.63107 ms
 Kernel GFLOPS: 12314.45672316
+
+
 Running benchmark for N = 2048
 C[0] = 505.48495483
 Host to Device memcpy time: 3.27568007 ms
 cuBLAS execution time (avg of 10): 1.25194228 ms
 Device to Host memcpy time: 6.20416021 ms
 Kernel GFLOPS: 13722.57291749
+
+
 Running benchmark for N = 4096
 C[0] = 1022.52960205
 Host to Device memcpy time: 10.83628845 ms
 cuBLAS execution time (avg of 10): 9.21026611 ms
 Device to Host memcpy time: 22.22447968 ms
 Kernel GFLOPS: 14922.36508496
+
+
 Running benchmark for N = 8192
 C[0] = 2061.25927734
 Host to Device memcpy time: 44.16233444 ms
 cuBLAS execution time (avg of 10): 58.52703094 ms
 Device to Host memcpy time: 85.87036896 ms
 Kernel GFLOPS: 18786.38998128
+
+
 Running benchmark for N = 12288
 C[0] = 3068.24462891
 Host to Device memcpy time: 102.43711853 ms
 cuBLAS execution time (avg of 10): 195.21771240 ms
 Device to Host memcpy time: 192.53240967 ms
 Kernel GFLOPS: 19008.78612949
+
+
 Running benchmark for N = 16384
 C[0] = 4072.17919922
 Host to Device memcpy time: 179.61628723 ms
 cuBLAS execution time (avg of 10): 461.21963501 ms
 Device to Host memcpy time: 341.12591553 ms
 Kernel GFLOPS: 19071.37587935
+
+
 Running benchmark for N = 20480
 C[0] = 5099.08447266
 Host to Device memcpy time: 271.41320801 ms
 cuBLAS execution time (avg of 10): 896.40295410 ms
 Device to Host memcpy time: 530.60992432 ms
 Kernel GFLOPS: 19165.34199870
+
+
 Running benchmark for N = 24576
 C[0] = 6128.47119141
 Host to Device memcpy time: 397.98706055 ms
 cuBLAS execution time (avg of 10): 1610.46166992 ms
 Device to Host memcpy time: 760.35839844 ms
 Kernel GFLOPS: 18433.72897623
+
+
 Running benchmark for N = 28672
 C[0] = 7132.84375000
 Host to Device memcpy time: 524.78271484 ms
