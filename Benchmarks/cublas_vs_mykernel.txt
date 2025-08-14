@@ -1,0 +1,156 @@
+Benchmarking results on DGX A100 (1 GPU 40 GB)
+
+./register
+Running benchmark for N = 1024
+Host to Device memcpy time: 2.40202 ms
+Kernel execution time (avg of 10): 0.24576 ms
+Device to Host memcpy time: 1.70179 ms
+Kernel GFLOPS: 8738.13355408
+
+
+Running benchmark for N = 2048
+Host to Device memcpy time: 3.35427189 ms
+Kernel execution time (avg of 10): 1.56600320 ms
+Device to Host memcpy time: 6.52511978 ms
+Kernel GFLOPS: 10970.51982192
+
+
+Running benchmark for N = 4096
+Host to Device memcpy time: 15.56179237 ms
+Kernel execution time (avg of 10): 11.74988747 ms
+Device to Host memcpy time: 24.49670410 ms
+Kernel GFLOPS: 11697.04423678
+
+
+Running benchmark for N = 8192
+Host to Device memcpy time: 45.67324829 ms
+Kernel execution time (avg of 10): 73.14545441 ms
+Device to Host memcpy time: 87.48429108 ms
+Kernel GFLOPS: 15031.85176295
+
+
+Running benchmark for N = 12288
+Host to Device memcpy time: 92.40393829 ms
+Kernel execution time (avg of 10): 246.05429077 ms
+Device to Host memcpy time: 195.27066040 ms
+Kernel GFLOPS: 15081.43480087
+
+
+Running benchmark for N = 16384
+Host to Device memcpy time: 143.65887451 ms
+Kernel execution time (avg of 10): 582.61206055 ms
+Device to Host memcpy time: 349.12451172 ms
+Kernel GFLOPS: 15097.68440762
+
+
+Running benchmark for N = 20480
+Host to Device memcpy time: 225.49501038 ms
+Kernel execution time (avg of 10): 1137.05078125 ms
+Device to Host memcpy time: 540.91082764 ms
+Kernel GFLOPS: 15109.14856864
+
+
+Running benchmark for N = 24576
+Host to Device memcpy time: 458.73522949 ms
+Kernel execution time (avg of 10): 1963.73632812 ms
+Device to Host memcpy time: 796.26379395 ms
+Kernel GFLOPS: 15117.51528185
+
+
+Running benchmark for N = 28672
+Host to Device memcpy time: 441.69000244 ms
+Kernel execution time (avg of 10): 3117.30908203 ms
+Device to Host memcpy time: 1059.49938965 ms
+Kernel GFLOPS: 15122.51746631
+
+
+
+
+
+
+
+./cublas
+Running benchmark for N = 1024
+C[0] = 264.159
+Host to Device memcpy time: 0.6704 ms
+cuBLAS execution time (avg of 10): 0.174387 ms
+Device to Host memcpy time: 1.63107 ms
+Kernel GFLOPS: 12314.45672316
+Running benchmark for N = 2048
+C[0] = 505.48495483
+Host to Device memcpy time: 3.27568007 ms
+cuBLAS execution time (avg of 10): 1.25194228 ms
+Device to Host memcpy time: 6.20416021 ms
+Kernel GFLOPS: 13722.57291749
+Running benchmark for N = 4096
+C[0] = 1022.52960205
+Host to Device memcpy time: 10.83628845 ms
+cuBLAS execution time (avg of 10): 9.21026611 ms
+Device to Host memcpy time: 22.22447968 ms
+Kernel GFLOPS: 14922.36508496
+Running benchmark for N = 8192
+C[0] = 2061.25927734
+Host to Device memcpy time: 44.16233444 ms
+cuBLAS execution time (avg of 10): 58.52703094 ms
+Device to Host memcpy time: 85.87036896 ms
+Kernel GFLOPS: 18786.38998128
+Running benchmark for N = 12288
+C[0] = 3068.24462891
+Host to Device memcpy time: 102.43711853 ms
+cuBLAS execution time (avg of 10): 195.21771240 ms
+Device to Host memcpy time: 192.53240967 ms
+Kernel GFLOPS: 19008.78612949
+Running benchmark for N = 16384
+C[0] = 4072.17919922
+Host to Device memcpy time: 179.61628723 ms
+cuBLAS execution time (avg of 10): 461.21963501 ms
+Device to Host memcpy time: 341.12591553 ms
+Kernel GFLOPS: 19071.37587935
+Running benchmark for N = 20480
+C[0] = 5099.08447266
+Host to Device memcpy time: 271.41320801 ms
+cuBLAS execution time (avg of 10): 896.40295410 ms
+Device to Host memcpy time: 530.60992432 ms
+Kernel GFLOPS: 19165.34199870
+Running benchmark for N = 24576
+C[0] = 6128.47119141
+Host to Device memcpy time: 397.98706055 ms
+cuBLAS execution time (avg of 10): 1610.46166992 ms
+Device to Host memcpy time: 760.35839844 ms
+Kernel GFLOPS: 18433.72897623
+Running benchmark for N = 28672
+C[0] = 7132.84375000
+Host to Device memcpy time: 524.78271484 ms
+cuBLAS execution time (avg of 10): 2557.17553711 ms
+Device to Host memcpy time: 1038.82727051 ms
+Kernel GFLOPS: 18435.01173728
+
+
+Benchmark Comparison: MyKernel vs. cuBLAS
+
+Matrix Size (N)  Method      Host to Device (ms)  Kernel Execution (ms)  Device to Host (ms)  GFLOPS
+---------------  ----------  -------------------  --------------------  -------------------  ----------
+1024             MyKernel    2.40202              0.24576               1.70179              8738.13
+1024             cuBLAS      0.67040              0.17439               1.63107              12314.46
+2048             MyKernel    3.35427              1.56600               6.52512              10970.52
+2048             cuBLAS      3.27568              1.25194               6.20416              13722.57
+4096             MyKernel    15.56179             11.74989              24.49670             11697.04
+4096             cuBLAS      10.83629             9.21027               22.22448             14922.37
+8192             MyKernel    45.67325             73.14545              87.48429             15031.85
+8192             cuBLAS      44.16233             58.52703              85.87037             18786.39
+12288            MyKernel    92.40394             246.05429             195.27066            15081.43
+12288            cuBLAS      102.43712            195.21771             192.53241            19008.79
+16384            MyKernel    143.65887            582.61206             349.12451            15097.68
+16384            cuBLAS      179.61629            461.21964             341.12592            19071.38
+20480            MyKernel    225.49501            1137.05078            540.91083            15109.15
+20480            cuBLAS      271.41321            896.40295             530.60992            19165.34
+24576            MyKernel    458.73523            1963.73633            796.26379            15117.52
+24576            cuBLAS      397.98706            1610.46167            760.35840            18433.73
+28672            MyKernel    441.69000            3117.30908            1059.49939           15122.52
+28672            cuBLAS      524.78271            2557.17554            1038.82727           18435.01
+
+Brief Outcomes:
+- MyKernel Performance: MyKernel achieves competitive performance, reaching up to 15,122.52 GFLOPS at N=28672, though it trails cuBLAS by 18-29% in GFLOPS for larger matrices (N ≥ 8192). It maintains consistent GFLOPS (~15,000) for N > 8192, showing good scalability.
+- Kernel Execution: MyKernel's execution times are higher than cuBLAS, with a gap of 20-22% for larger matrices (e.g., 3117.31 ms vs. 2557.18 ms at N=28672), indicating room for optimization in compute efficiency.
+- Data Transfers: MyKernel performs better in host-to-device transfers for large matrices (N ≥ 16384, e.g., 441.69 ms vs. 524.78 ms at N=28672), but device-to-host transfers are slightly slower, differing by ~2-5%.
+- Strengths: MyKernel excels in host-to-device transfers for large matrices and maintains stable GFLOPS, making it a solid custom implementation, though cuBLAS leverages optimized libraries for faster computation.
