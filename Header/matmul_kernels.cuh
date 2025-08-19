@@ -12,5 +12,6 @@ __global__ void matMulShared(float *A, float *B, float *C, int width);
 
 // register tiling
 __global__ void matmul_register_tiling(const float *A , const float *B ,  float *C , const int N);
-
+// vectorized access
+__global__ void matmul_vectorized(float *A, float *B, float *C, int N);
 #endif // MATMUL_KERNELS_H 
