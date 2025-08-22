@@ -153,9 +153,6 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 3. Document optimization techniques used
 4. Ensure compatibility with existing build system
 
-## 📝 License
-
-This project is for educational and research purposes, demonstrating CUDA optimization techniques for matrix multiplication.
 
 ## 🔗 References
 
