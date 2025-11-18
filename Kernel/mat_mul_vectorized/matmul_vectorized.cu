@@ -1,5 +1,7 @@
 #include<cuda_runtime.h>
 #include "../../Header/matmul_kernels.cuh"
+
+
 #define COARSE_FACTOR 4
 #define TILE_SIZE 64
 __global__ void matmul_vectorized(float *A, float *B, float *C, int N)
@@ -39,7 +41,7 @@ __global__ void matmul_vectorized(float *A, float *B, float *C, int N)
         {
             if ((by*TILE_SIZE + load_offset+A_view_ty < N) && (((phase*TILE_SIZE+A_view_tx*4)) < N))
             {
-                float4 A_tmp = reinterpret_cast<float4 *>(&A[(by*TILE_SIZE + load_offset+A_view_ty)*N + ((phase*TILE_SIZE+A_view_tx*4))])[0];
+            float4 A_tmp = reinterpret_cast<float4 *>(&A[(phase*TILE_SIZE + load_offset+A_view_ty)*N + (by*TILE_SIZE+A_view_tx*4)])[0];
                 sh_A[load_offset+A_view_ty][A_view_tx*4+0] = A_tmp.x;
                 sh_A[load_offset+A_view_ty][A_view_tx*4+1] = A_tmp.y;
                 sh_A[load_offset+A_view_ty][A_view_tx*4+2] = A_tmp.z;
@@ -84,8 +86,7 @@ __global__ void matmul_vectorized(float *A, float *B, float *C, int N)
                 register_B[i] = sh_B[k][col+i];
             
             for (int cy = 0; cy < COARSE_FACTOR; ++cy)
-            {
-                #pragma unroll
+            { 
                 for (int cx = 0; cx < COARSE_FACTOR; ++cx)
                     value[cy][cx] += register_A[cy] * register_B[cx];
             }
@@ -94,13 +95,11 @@ __global__ void matmul_vectorized(float *A, float *B, float *C, int N)
     }
     // Assigning calculated value
    
-    for (int cy = 0; cy < COARSE_FACTOR; ++cy)
-    {
-        \
-        for (int cx = 0; cx < COARSE_FACTOR; cx++)
-        {
-            if ((by*TILE_SIZE+row+cy < N) && (bx*TILE_SIZE+col+cx < N))
-                C[(by*TILE_SIZE+row+cy)*N + (bx*TILE_SIZE+col+cx)] = 1*value[cy][cx] + 0*C[(by*TILE_SIZE+row+cy)*N + (bx*TILE_SIZE+col+cx)];
-        }
+    const int out_row = by * TILE_SIZE + row;
+    const int out_col = bx * TILE_SIZE + col;
+ 
+    for (int i = 0; i < COARSE_FACTOR; ++i) {
+        *(reinterpret_cast<float4*>(&C[(out_row + i) * N + out_col])) = 
+            make_float4(value[i][0], value[i][1], value[i][2], value[i][3]);
     }
 }
