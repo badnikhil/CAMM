@@ -14,4 +14,10 @@ __global__ void matMulShared(float *A, float *B, float *C, int width);
 __global__ void matmul_register_tiling(const float *A , const float *B ,  float *C , const int N);
 // vectorized access
 __global__ void matmul_vectorized(float *A, float *B, float *C, int N);
-#endif // MATMUL_KERNELS_H 
+
+// autotuned 128x128 / BK16 / 16x8 register tile
+__global__ void matmul_tuned(const float *A, const float *B, float *C, int N);
+
+// double-buffered (software-pipelined) tuned kernel
+__global__ void matmul_doublebuffer(const float *A, const float *B, float *C, int N);
+#endif // MATMUL_KERNELS_H
