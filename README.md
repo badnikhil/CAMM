@@ -4,7 +4,7 @@ A comprehensive CUDA implementation showcasing various matrix multiplication opt
 
 ## 🚀 Features
 
-- **5 Different Kernel Implementations** with progressive optimizations
+- **7 Different Kernel Implementations** with progressive optimizations
 - **Comprehensive Benchmarking** against cuBLAS and CUTLASS
 - **Performance Analysis** with detailed metrics
 - **Modular Architecture** for easy experimentation
@@ -18,7 +18,10 @@ CAMM/
 │   ├── matmul_naive/               # Basic matrix multiplication
 │   ├── mat_mul_coalesced/          # Memory coalescing optimization
 │   ├── mat_mul_sharedmem/          # Shared memory optimization
-│   └── mat_mul_register_tiling/    # Register tiling with specialization
+│   ├── mat_mul_register_tiling/    # Register tiling with specialization
+│   ├── mat_mul_vectorized/         # float4 vectorized memory access
+│   ├── mat_mul_tuned/              # Autotuned 128x128 / BK16 / 16x8 reg tile
+│   └── mat_mul_doublebuffer/       # Software-pipelined double buffering
 ├── Header/
 │   └── matmul_kernels.cuh          # Kernel function declarations
 ├── utils/                          # Benchmarking and utility functions
@@ -54,10 +57,22 @@ CAMM/
   - Optimized grid dimensions: `gridDim(16,16)`, `blockDim(16,16)`
 - **Performance**: ~8-12x improvement over naive implementation
 
-### 5. Vectorized Operations (`matmul_opt_specialized`)
+### 5. Vectorized Operations (`matmul_vectorized`)
 - **Description**: Specialized kernels with vectorized memory operations
 - **Performance**: Highest performance Achieved Yet
 - **⚠️ Note**: Currently experiencing efficiency loss that requires optimization fixes
+
+### 6. Tuned Register Tiling (`matmul_tuned`)
+- **Description**: Autotuned 128x128 block tile, BK=16, asymmetric **16x8** thread
+  register tile (128 threads/block), transposed shared A, float4-vectorized loads/stores
+- **Key finding**: the asymmetric 16x8 register tile beats both 8x8 and 8x16
+- **Constraint**: square N, multiple of 128
+
+### 7. Double Buffering (`matmul_doublebuffer`)
+- **Description**: Software-pipelined version of the tuned kernel — prefetches the
+  next K-block into registers while the current block's FMAs run, overlapping
+  global-load latency with compute
+- **Constraint**: square N, multiple of 128
 
 ## 🏗️ Build Instructions
 
@@ -82,6 +97,15 @@ nvcc -o shared utils/benchmark_matmul_sharedmem.cu Kernel/mat_mul_sharedmem/*.cu
 
 # Register tiling
 nvcc -o register utils/benchmark_matmul_register_tiling.cu Kernel/mat_mul_register_tiling/*.cu
+
+# Vectorized
+nvcc -o vectorized utils/benchmark_matmul_vectorized.cu Kernel/mat_mul_vectorized/*.cu
+
+# Tuned (128x128, BK=16, 16x8 register tile)
+nvcc -O3 -arch=sm_86 -o tuned utils/benchmark_matmul_tuned.cu Kernel/mat_mul_tuned/*.cu
+
+# Double-buffered
+nvcc -O3 -arch=sm_86 -o doublebuffer utils/benchmark_matmul_doublebuffer.cu Kernel/mat_mul_doublebuffer/*.cu
 ```
 
 #### Complete Benchmarking Suite
@@ -107,6 +131,12 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 ```bash
 # Run individual kernel benchmark
 ./benchmark
+
+# Tuned kernel sweep (N = 128 .. 8192)
+./tuned
+
+# Double-buffered kernel sweep
+./doublebuffer
 
 # Compare with cuBLAS
 ./cublas_bench
