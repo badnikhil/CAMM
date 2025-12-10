@@ -20,4 +20,10 @@ __global__ void matmul_tuned(const float *A, const float *B, float *C, int N);
 
 // double-buffered (software-pipelined) tuned kernel
 __global__ void matmul_doublebuffer(const float *A, const float *B, float *C, int N);
+
+// --- arbitrary-shape kernels: host launchers, C(MxN)=A(MxK)*B(KxN) ---
+// general: bounds-checked, runs any M,N,K correctly
+void launch_matmul_general(const float *A, const float *B, float *C, int M, int N, int K);
+// boundary: fast float4 interior tiles + masked edges, any M,N,K
+void launch_matmul_boundary(const float *A, const float *B, float *C, int M, int N, int K);
 #endif // MATMUL_KERNELS_H
