@@ -4,11 +4,12 @@ A comprehensive CUDA implementation showcasing various matrix multiplication opt
 
 ## 🚀 Features
 
-- **7 Different Kernel Implementations** with progressive optimizations
+- **9 Different Kernel Implementations** with progressive optimizations
+- **Arbitrary-shape kernels** (any M, N, K — square, rectangular, non-aligned)
+- **Autotuner** that sweeps tile geometries to find the best config per GPU
 - **Comprehensive Benchmarking** against cuBLAS and CUTLASS
 - **Performance Analysis** with detailed metrics
 - **Modular Architecture** for easy experimentation
-- **Size-Specialized Kernels** for optimal performance
 
 ## 📁 Project Structure
 
@@ -21,11 +22,15 @@ CAMM/
 │   ├── mat_mul_register_tiling/    # Register tiling with specialization
 │   ├── mat_mul_vectorized/         # float4 vectorized memory access
 │   ├── mat_mul_tuned/              # Autotuned 128x128 / BK16 / 16x8 reg tile
-│   └── mat_mul_doublebuffer/       # Software-pipelined double buffering
+│   ├── mat_mul_doublebuffer/       # Software-pipelined double buffering
+│   ├── mat_mul_general/            # Arbitrary M,N,K (bounds-checked)
+│   └── mat_mul_boundary/           # Arbitrary M,N,K (fast interior + masked edges)
 ├── Header/
 │   └── matmul_kernels.cuh          # Kernel function declarations
 ├── utils/                          # Benchmarking and utility functions
 │   ├── benchmark_matmul_*.cu       # Individual kernel benchmarks
+│   ├── benchmark_matmul_shapes.cu  # Arbitrary-shape (general/boundary) benchmark
+│   ├── autotune.cu                 # Tile-geometry sweep vs cuBLAS
 │   ├── main.cu                     # Main benchmarking suite
 │   └── cpu_benchmarking.cpp        # CPU reference implementation
 ├── Benchmarks/                     # Performance results (ignored by git)
@@ -74,6 +79,20 @@ CAMM/
   global-load latency with compute
 - **Constraint**: square N, multiple of 128
 
+### 8. General (`launch_matmul_general`)
+- **Description**: Arbitrary **M, N, K** matmul. Same register-blocking compute as
+  the tuned kernel, but every global access is bounds-checked, so any shape runs
+  correctly (square, rectangular, non-128-aligned). Uses a 64x64 tile for small
+  dimensions (fills all SMs) and 128x128 otherwise.
+- **Signature**: `launch_matmul_general(A, B, C, M, N, K)` — `C(MxN)=A(MxK)*B(KxN)`
+
+### 9. Boundary (`launch_matmul_boundary`)
+- **Description**: Arbitrary **M, N, K**, but interior 128x128 tiles take the fast
+  float4 double-buffered path while only the partial edge tiles + K-remainder take
+  the scalar masked path — no padding buffers, no extra copies. The fast interior
+  path needs `N%4==0 && K%4==0`; otherwise it falls back to the scalar path.
+- **Signature**: `launch_matmul_boundary(A, B, C, M, N, K)`
+
 ## 🏗️ Build Instructions
 
 ### Prerequisites
@@ -106,6 +125,13 @@ nvcc -O3 -arch=sm_86 -o tuned utils/benchmark_matmul_tuned.cu Kernel/mat_mul_tun
 
 # Double-buffered
 nvcc -O3 -arch=sm_86 -o doublebuffer utils/benchmark_matmul_doublebuffer.cu Kernel/mat_mul_doublebuffer/*.cu
+
+# Arbitrary-shape kernels (general + boundary), square/rectangular/non-aligned
+nvcc -O3 -arch=sm_86 -o shapes utils/benchmark_matmul_shapes.cu \
+     Kernel/mat_mul_general/*.cu Kernel/mat_mul_boundary/*.cu
+
+# Autotuner: sweep tile geometries vs cuBLAS (needs -lcublas)
+nvcc -O3 -arch=sm_86 -o autotune utils/autotune.cu -lcublas
 ```
 
 #### Complete Benchmarking Suite
@@ -138,12 +164,23 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 # Double-buffered kernel sweep
 ./doublebuffer
 
+# Arbitrary-shape kernels: square, rectangular, non-aligned (with correctness check)
+./shapes
+
+# Autotuner — sweep tile geometries at the given sizes (defaults to 2048 4096)
+./autotune 2048 4096
+
 # Compare with cuBLAS
 ./cublas_bench
 
 # Compare with CUTLASS
 ./cutlass_bench
 ```
+
+> **Note on `-arch`**: use `sm_86` for Ampere consumer GPUs (e.g. RTX 30-series, RTX 2050),
+> `sm_80` for A100, `sm_75` for Turing. The tuned/double-buffer/boundary kernels are
+> square-tile-aligned to **multiples of 128** for the fast path; the general and boundary
+> kernels accept any `M, N, K`. Re-run `./autotune` on a new GPU to re-find the best tile.
 
 ### Expected Performance Characteristics
 
@@ -162,7 +199,11 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 2. **Shared Memory Utilization**: Reducing global memory bandwidth requirements
 3. **Register Tiling**: Maximizing register usage and reducing memory latency
 4. **Thread Block Optimization**: Optimal thread block dimensions
-5. **Vectorized Operations**: Using vector load/store instructions
+5. **Vectorized Operations**: Using float4 vector load/store instructions
+6. **Asymmetric Register Tiles**: 16x8 thread tile (autotuned winner on Ampere)
+7. **Double Buffering**: Software-pipelined prefetch overlapping load with compute
+8. **Predicated Boundary Handling**: fast interior tiles + masked edges for any shape
+9. **Autotuning**: sweeping tile geometry to find the GPU-specific optimum
 
 
 ## 📈 Development and Testing
