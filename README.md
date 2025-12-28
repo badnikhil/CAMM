@@ -5,6 +5,7 @@ A comprehensive CUDA implementation showcasing various matrix multiplication opt
 ## 🚀 Features
 
 - **9 Different Kernel Implementations** with progressive optimizations
+- **Auto-dispatch** entry point that selects the best kernel per shape
 - **Arbitrary-shape kernels** (any M, N, K — square, rectangular, non-aligned)
 - **Autotuner** that sweeps tile geometries to find the best config per GPU
 - **Comprehensive Benchmarking** against cuBLAS and CUTLASS
@@ -24,7 +25,8 @@ CAMM/
 │   ├── mat_mul_tuned/              # Autotuned 128x128 / BK16 / 16x8 reg tile
 │   ├── mat_mul_doublebuffer/       # Software-pipelined double buffering
 │   ├── mat_mul_general/            # Arbitrary M,N,K (bounds-checked)
-│   └── mat_mul_boundary/           # Arbitrary M,N,K (fast interior + masked edges)
+│   ├── mat_mul_boundary/           # Arbitrary M,N,K (fast interior + masked edges)
+│   └── mat_mul_auto/               # Auto-dispatch: best kernel per shape
 ├── Header/
 │   └── matmul_kernels.cuh          # Kernel function declarations
 ├── utils/                          # Benchmarking and utility functions
@@ -93,6 +95,14 @@ CAMM/
   path needs `N%4==0 && K%4==0`; otherwise it falls back to the scalar path.
 - **Signature**: `launch_matmul_boundary(A, B, C, M, N, K)`
 
+### ⭐ Auto (`launch_matmul_auto`) — recommended entry point
+- **Description**: Picks the best kernel for the given shape automatically:
+  - square & multiple of 128, K in [5120, 8192) → **tuned** (single-buffer wins at deep K)
+  - square & multiple of 128, otherwise → **doublebuffer** (best general default)
+  - any other shape → **boundary** (handles arbitrary M, N, K)
+- **Signature**: `launch_matmul_auto(A, B, C, M, N, K)`
+- **Use this** if you just want the fastest correct result for any shape.
+
 ## 🏗️ Build Instructions
 
 ### Prerequisites
@@ -132,6 +142,11 @@ nvcc -O3 -arch=sm_86 -o shapes utils/benchmark_matmul_shapes.cu \
 
 # Autotuner: sweep tile geometries vs cuBLAS (needs -lcublas)
 nvcc -O3 -arch=sm_86 -o autotune utils/autotune.cu -lcublas
+
+# ⭐ Auto kernel — picks the best kernel per shape automatically
+nvcc -O3 -arch=sm_86 -o auto utils/benchmark_matmul_auto.cu \
+     Kernel/mat_mul_auto/*.cu Kernel/mat_mul_tuned/*.cu \
+     Kernel/mat_mul_doublebuffer/*.cu Kernel/mat_mul_boundary/*.cu
 ```
 
 #### Complete Benchmarking Suite
@@ -157,6 +172,11 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 ```bash
 # Run individual kernel benchmark
 ./benchmark
+
+# ⭐ Auto kernel — best kernel per shape, the recommended entry point
+./auto              # default square sweep (128 .. 8192)
+./auto 4096         # single square N=4096
+./auto 1024 4096 2048   # rectangular M=1024 N=4096 K=2048
 
 # Tuned kernel sweep (N = 128 .. 8192)
 ./tuned

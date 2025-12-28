@@ -26,4 +26,6 @@ __global__ void matmul_doublebuffer(const float *A, const float *B, float *C, in
 void launch_matmul_general(const float *A, const float *B, float *C, int M, int N, int K);
 // boundary: fast float4 interior tiles + masked edges, any M,N,K
 void launch_matmul_boundary(const float *A, const float *B, float *C, int M, int N, int K);
+// auto: picks the best kernel for the given shape (tuned / doublebuffer / boundary)
+void launch_matmul_auto(const float *A, const float *B, float *C, int M, int N, int K);
 #endif // MATMUL_KERNELS_H
