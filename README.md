@@ -147,6 +147,11 @@ nvcc -O3 -arch=sm_86 -o autotune utils/autotune.cu -lcublas
 nvcc -O3 -arch=sm_86 -o auto utils/benchmark_matmul_auto.cu \
      Kernel/mat_mul_auto/*.cu Kernel/mat_mul_tuned/*.cu \
      Kernel/mat_mul_doublebuffer/*.cu Kernel/mat_mul_boundary/*.cu
+
+# Head-to-head: cuBLAS vs our auto kernel on matched sizes (needs -lcublas)
+nvcc -O3 -arch=sm_86 -o compare utils/benchmark_compare.cu \
+     Kernel/mat_mul_auto/*.cu Kernel/mat_mul_tuned/*.cu \
+     Kernel/mat_mul_doublebuffer/*.cu Kernel/mat_mul_boundary/*.cu -lcublas
 ```
 
 #### Complete Benchmarking Suite
@@ -177,6 +182,9 @@ nvcc -O3 -arch=sm_75 -use_fast_math -Xptxas -O3 -o <output> <source_files>
 ./auto              # default square sweep (128 .. 8192)
 ./auto 4096         # single square N=4096
 ./auto 1024 4096 2048   # rectangular M=1024 N=4096 K=2048
+
+# Head-to-head: cuBLAS vs our auto kernel (matched sizes, prints comparison table)
+./compare
 
 # Tuned kernel sweep (N = 128 .. 8192)
 ./tuned
