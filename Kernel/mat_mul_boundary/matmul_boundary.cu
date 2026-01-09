@@ -21,19 +21,19 @@ __global__ void matmul_boundary_kernel(const float* __restrict__ A, const float*
     __shared__ float As[2][BK * BM];
     __shared__ float Bs[2][BK * BN];
 
-    const int numThreads = (BM * BN) / (TM * TN);
+    constexpr int numThreads = (BM * BN) / (TM * TN);
     const int threadRow = threadIdx.x / (BN / TN);
     const int threadCol = threadIdx.x % (BN / TN);
 
     const int irA = threadIdx.x / (BK / 4), icA = threadIdx.x % (BK / 4);
-    const int strideA = numThreads / (BK / 4);
+    constexpr int strideA = numThreads / (BK / 4);
     const int irB = threadIdx.x / (BN / 4), icB = threadIdx.x % (BN / 4);
-    const int strideB = numThreads / (BN / 4);
-    const int nA = BM / strideA;
-    const int nB = BK / strideB;
+    constexpr int strideB = numThreads / (BN / 4);
+    constexpr int nA = BM / strideA;
+    constexpr int nB = BK / strideB;
 
-    const int A_elems = BM * BK;
-    const int B_elems = BK * BN;
+    constexpr int A_elems = BM * BK;
+    constexpr int B_elems = BK * BN;
 
     const bool fullM = (blockRow + BM) <= M;
     const bool fullN = (blockCol + BN) <= N;
@@ -52,6 +52,7 @@ __global__ void matmul_boundary_kernel(const float* __restrict__ A, const float*
     if (interior) {
         const float* Ap = Ai;
         const float* Bp = Bi;
+#pragma unroll
         for (int o = 0; o < BM; o += strideA) {
             float4 t = reinterpret_cast<const float4*>(&Ap[(irA + o) * K + icA * 4])[0];
             As[0][(icA * 4 + 0) * BM + irA + o] = t.x;
@@ -59,6 +60,7 @@ __global__ void matmul_boundary_kernel(const float* __restrict__ A, const float*
             As[0][(icA * 4 + 2) * BM + irA + o] = t.z;
             As[0][(icA * 4 + 3) * BM + irA + o] = t.w;
         }
+#pragma unroll
         for (int o = 0; o < BK; o += strideB)
             reinterpret_cast<float4*>(&Bs[0][(irB + o) * BN + icB * 4])[0] =
                 reinterpret_cast<const float4*>(&Bp[(irB + o) * N + icB * 4])[0];
@@ -69,31 +71,40 @@ __global__ void matmul_boundary_kernel(const float* __restrict__ A, const float*
         int buf = 0;
         for (int t = 0; t < numFull; ++t) {
             const bool has_next = (t + 1 < numFull);
-            float4 rA[8];   // nA <= 8 for the configs used here
-            float4 rB[8];   // nB <= 8
+            float4 rA[nA];
+            float4 rB[nB];
             if (has_next) {
+#pragma unroll
                 for (int o = 0, idx = 0; o < BM; o += strideA, ++idx)
                     rA[idx] = reinterpret_cast<const float4*>(&Ap[(irA + o) * K + icA * 4])[0];
+#pragma unroll
                 for (int o = 0, idx = 0; o < BK; o += strideB, ++idx)
                     rB[idx] = reinterpret_cast<const float4*>(&Bp[(irB + o) * N + icB * 4])[0];
                 Ap += BK;
                 Bp += BK * N;
             }
+#pragma unroll
             for (int k = 0; k < BK; ++k) {
+#pragma unroll
                 for (int i = 0; i < TM; ++i) regM[i] = As[buf][k * BM + threadRow * TM + i];
+#pragma unroll
                 for (int j = 0; j < TN; ++j) regN[j] = Bs[buf][k * BN + threadCol * TN + j];
+#pragma unroll
                 for (int i = 0; i < TM; ++i)
+#pragma unroll
                     for (int j = 0; j < TN; ++j)
                         acc[i * TN + j] += regM[i] * regN[j];
             }
             if (has_next) {
                 const int nbuf = buf ^ 1;
+#pragma unroll
                 for (int o = 0, idx = 0; o < BM; o += strideA, ++idx) {
                     As[nbuf][(icA * 4 + 0) * BM + irA + o] = rA[idx].x;
                     As[nbuf][(icA * 4 + 1) * BM + irA + o] = rA[idx].y;
                     As[nbuf][(icA * 4 + 2) * BM + irA + o] = rA[idx].z;
                     As[nbuf][(icA * 4 + 3) * BM + irA + o] = rA[idx].w;
                 }
+#pragma unroll
                 for (int o = 0, idx = 0; o < BK; o += strideB, ++idx)
                     reinterpret_cast<float4*>(&Bs[nbuf][(irB + o) * BN + icB * 4])[0] = rB[idx];
                 __syncthreads();
@@ -113,15 +124,22 @@ __global__ void matmul_boundary_kernel(const float* __restrict__ A, const float*
                 Bs[0][r * BN + c] = (r < kRem) ? Bi[(size_t)(kbase + r) * N + c] : 0.0f;
             }
             __syncthreads();
+#pragma unroll
             for (int k = 0; k < BK; ++k) {
+#pragma unroll
                 for (int i = 0; i < TM; ++i) regM[i] = As[0][k * BM + threadRow * TM + i];
+#pragma unroll
                 for (int j = 0; j < TN; ++j) regN[j] = Bs[0][k * BN + threadCol * TN + j];
+#pragma unroll
                 for (int i = 0; i < TM; ++i)
+#pragma unroll
                     for (int j = 0; j < TN; ++j)
                         acc[i * TN + j] += regM[i] * regN[j];
             }
         }
+#pragma unroll
         for (int i = 0; i < TM; ++i)
+#pragma unroll
             for (int j = 0; j < TN; j += 4) {
                 float4 v;
                 v.x = acc[i * TN + j + 0];

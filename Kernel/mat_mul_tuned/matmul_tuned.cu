@@ -20,19 +20,22 @@ __global__ void matmul_tuned(const float *A, const float *B, float *C, int N) {
     B += cCol * BN;
     C += cRow * BM * N + cCol * BN;
 
-    const int numThreads = (BM * BN) / (TM * TN);
+    // constexpr so the compiler bakes these in and the loops below fully unroll
+    // (this is what makes the kernel fast — runtime const ints would not unroll).
+    constexpr int numThreads = (BM * BN) / (TM * TN);
     const int threadRow = threadIdx.x / (BN / TN);
     const int threadCol = threadIdx.x % (BN / TN);
 
     const int irA = threadIdx.x / (BK / 4), icA = threadIdx.x % (BK / 4);
-    const int strideA = numThreads / (BK / 4);
+    constexpr int strideA = numThreads / (BK / 4);
     const int irB = threadIdx.x / (BN / 4), icB = threadIdx.x % (BN / 4);
-    const int strideB = numThreads / (BN / 4);
+    constexpr int strideB = numThreads / (BN / 4);
 
     float acc[TM * TN] = {0.0f};
     float regM[TM], regN[TN];
 
     for (int bk = 0; bk < N; bk += BK) {
+#pragma unroll
         for (int o = 0; o < BM; o += strideA) {
             float4 t = reinterpret_cast<const float4 *>(&A[(irA + o) * N + icA * 4])[0];
             As[(icA * 4 + 0) * BM + irA + o] = t.x;
@@ -40,6 +43,7 @@ __global__ void matmul_tuned(const float *A, const float *B, float *C, int N) {
             As[(icA * 4 + 2) * BM + irA + o] = t.z;
             As[(icA * 4 + 3) * BM + irA + o] = t.w;
         }
+#pragma unroll
         for (int o = 0; o < BK; o += strideB)
             reinterpret_cast<float4 *>(&Bs[(irB + o) * BN + icB * 4])[0] =
                 reinterpret_cast<const float4 *>(&B[(irB + o) * N + icB * 4])[0];
@@ -47,17 +51,24 @@ __global__ void matmul_tuned(const float *A, const float *B, float *C, int N) {
         A += BK;
         B += BK * N;
 
+#pragma unroll
         for (int k = 0; k < BK; ++k) {
+#pragma unroll
             for (int i = 0; i < TM; ++i) regM[i] = As[k * BM + threadRow * TM + i];
+#pragma unroll
             for (int j = 0; j < TN; ++j) regN[j] = Bs[k * BN + threadCol * TN + j];
+#pragma unroll
             for (int i = 0; i < TM; ++i)
+#pragma unroll
                 for (int j = 0; j < TN; ++j)
                     acc[i * TN + j] += regM[i] * regN[j];
         }
         __syncthreads();
     }
 
+#pragma unroll
     for (int i = 0; i < TM; ++i)
+#pragma unroll
         for (int j = 0; j < TN; j += 4) {
             float4 v;
             v.x = acc[i * TN + j + 0];
