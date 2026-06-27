@@ -57,52 +57,50 @@ Result run_benchmark(int N) {
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    const int runs = 10;
 
-    // ---------------- cuBLAS (row-major via swap trick) ----------------
     cublasHandle_t handle;
     cublasCreate(&handle);
     cublasSetMathMode(handle, CUBLAS_DEFAULT_MATH);   // pure FP32, no TF32
     const float alpha = 1.0f, beta = 0.0f;
 
-    cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, N, N,
-                &alpha, d_B, N, d_A, N, &beta, d_C, N);   // warmup
-    cudaDeviceSynchronize();
-
-    float cublas_ms = 0;
-    for (int i = 0; i < runs; ++i) {
-        cudaEventRecord(start);
+    auto run_cublas = [&] {
         cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, N, N, N,
                     &alpha, d_B, N, d_A, N, &beta, d_C, N);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        float ms = 0; cudaEventElapsedTime(&ms, start, stop);
-        cublas_ms += ms;
-    }
-    cublas_ms /= runs;
-    cublasDestroy(handle);
-    double cublas_gflops = (2.0 * N * N * N) / (cublas_ms / 1000.0) / 1e9;
+    };
+    auto run_auto = [&] { launch_matmul_auto(d_A, d_B, d_C, N, N, N); };
 
-    // ---------------- our auto kernel picker ----------------
-    launch_matmul_auto(d_A, d_B, d_C, N, N, N);   // warmup
+    // Light warmup only: get past cold-start clocks WITHOUT cooking the GPU.
+    // (A heavy warmup throttles this 55W card before timing even begins.)
+    for (int i = 0; i < 3; ++i) { run_cublas(); run_auto(); }
     cudaDeviceSynchronize();
 
-    float auto_ms = 0;
+    // Interleaved best-of-N: alternate cuBLAS and auto so both see the same
+    // thermal state, and keep each one's FASTEST (least-throttled, peak-clock)
+    // time. Keep N modest so sustained heat doesn't dominate the samples.
+    // NOTE: on a power-capped laptop GPU the margin is within thermal noise; for
+    // a clean comparison lock the clock first:  sudo nvidia-smi -lgc 1500,1500
+    const int runs = 12;
+    float cublas_best = 1e30f, auto_best = 1e30f;
     for (int i = 0; i < runs; ++i) {
-        cudaEventRecord(start);
-        launch_matmul_auto(d_A, d_B, d_C, N, N, N);
-        cudaEventRecord(stop);
+        cudaEventRecord(start); run_cublas(); cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         float ms = 0; cudaEventElapsedTime(&ms, start, stop);
-        auto_ms += ms;
+        if (ms < cublas_best) cublas_best = ms;
+
+        cudaEventRecord(start); run_auto(); cudaEventRecord(stop);
+        cudaEventSynchronize(stop);
+        ms = 0; cudaEventElapsedTime(&ms, start, stop);
+        if (ms < auto_best) auto_best = ms;
     }
-    auto_ms /= runs;
-    double auto_gflops = (2.0 * N * N * N) / (auto_ms / 1000.0) / 1e9;
+    cublasDestroy(handle);
+
+    double cublas_gflops = (2.0 * N * N * N) / (cublas_best / 1000.0) / 1e9;
+    double auto_gflops   = (2.0 * N * N * N) / (auto_best / 1000.0) / 1e9;
 
     std::cout << std::fixed << std::setprecision(2);
-    std::cout << "  cuBLAS : " << std::setw(9) << cublas_ms << " ms   "
+    std::cout << "  cuBLAS : " << std::setw(9) << cublas_best << " ms   "
               << std::setw(9) << cublas_gflops << " GFLOP/s" << std::endl;
-    std::cout << "  auto   : " << std::setw(9) << auto_ms << " ms   "
+    std::cout << "  auto   : " << std::setw(9) << auto_best << " ms   "
               << std::setw(9) << auto_gflops << " GFLOP/s" << std::endl;
 
     cudaEventDestroy(start);
